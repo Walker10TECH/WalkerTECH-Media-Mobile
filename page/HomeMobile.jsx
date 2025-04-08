@@ -41,9 +41,9 @@ const MINI_PLAYER_HEIGHT = 65;
 const TAB_BAR_HEIGHT = 55; // Standard approx height
 // WARNING: EXPOSING API KEYS IN CLIENT-SIDE CODE IS A MAJOR SECURITY RISK!
 // These should be handled via a backend server or secure environment variables in a real application.
-const GEMINI_API_KEY = "AIzaSyDtzOBprQ3AvPrtieLJJjVf69X_PkotWT4"; // <--- EXPOSED! Replace with secure method if deploying
-const SPOTIFY_CLIENT_ID = "204c3d96e9d14d678ce142499ccaa83e"; // <--- EXPOSED! Replace with secure method if deploying
-const SPOTIFY_CLIENT_SECRET = "02dab7bb62a4487e9c0a997fcf827d3a"; // <--- EXPOSED! Replace with secure method if deploying
+const GEMINI_API_KEY = "YOUR_API_KEY_HERE"; // <--- EXPOSED! Replace with secure method if deploying
+const SPOTIFY_CLIENT_ID = "YOUR_SPOTIFY_CLIENT_ID"; // <--- EXPOSED! Replace with secure method if deploying
+const SPOTIFY_CLIENT_SECRET = "YOUR_SPOTIFY_CLIENT_SECRET"; // <--- EXPOSED! Replace with secure method if deploying
 // END WARNING
 const GEMINI_MODEL_NAME = "gemini-1.5-pro";
 const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
@@ -67,8 +67,8 @@ const METADATA_LOAD_TIMEOUT = 5000; // ms timeout for loading audio/video durati
 
 // --- Initialize APIs ---
 let genAI;
-// Check if the key is present and not the placeholder or the example key (adjust if needed)
-if (GEMINI_API_KEY && GEMINI_API_KEY !== "YOUR_API_KEY_HERE" && GEMINI_API_KEY !== "AIzaSyDtzOBprQ3AvPrtieLJJjVf69X_PkotWT4") {
+// Check if the key is present and not the placeholder
+if (GEMINI_API_KEY && GEMINI_API_KEY !== "YOUR_API_KEY_HERE") {
     try {
         genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
         console.log("Gemini AI Initialized.");
@@ -76,7 +76,7 @@ if (GEMINI_API_KEY && GEMINI_API_KEY !== "YOUR_API_KEY_HERE" && GEMINI_API_KEY !
         console.error("Failed to initialize Gemini AI:", error);
     }
 } else {
-    console.warn("Gemini API Key is missing, placeholder, or the example key! Gemini features disabled.");
+    console.warn("Gemini API Key is missing or is the placeholder! Gemini features disabled.");
 }
 
 // --- Database Setup (idb for Web ONLY) ---
@@ -259,7 +259,11 @@ const MediaListItem = React.memo(({ item, isCurrent, isPlaying, isLoadingMeta, o
         }
     }, [item.type, showTypeIcon]);
 
-    const placeholder = require('../assets/placeholder.png'); // Ensure path is correct
+    // Ensure the placeholder path is correct relative to this file
+    // If this file is in src/components and assets is in root, path is '../../assets/placeholder.png'
+    // If this file is in src and assets is in src, path is '../assets/placeholder.png'
+    // Adjust the path based on your project structure. Assuming it's one level up:
+    const placeholder = require('../assets/placeholder.png'); // ADJUST PATH IF NEEDED
 
     const imageSource = useMemo(() => {
         let uri = item.coverArtUrl || (item.type === 'image' ? item.uri : null);
@@ -391,7 +395,7 @@ const FullScreenPlayer = ({
     const canSeek = playbackStatus?.isLoaded && duration > 0 && Number.isFinite(duration);
     const isVideo = media.type === 'video';
     const videoRef = useRef(null); // Ref for native Video component
-    const placeholder = require('../assets/placeholder.png'); // Ensure path is correct
+    const placeholder = require('../assets/placeholder.png'); // ADJUST PATH IF NEEDED
 
     const handleSlidingComplete = (value) => { if (canSeek && typeof value === 'number') onSeek(value); };
 
@@ -440,16 +444,13 @@ const FullScreenPlayer = ({
                         // This component primarily displays the video frame.
                     />
                  )}
-                 {/* Web Video Player - Rendered via WebAudioPlayer component */}
+                 {/* Web Video/Audio Player Element (Managed by WebAudioPlayer logic) */}
+                 {/* This element is created/managed in the App component's WebAudioPlayer logic */}
+                 {/* We render a placeholder here for layout purposes if it's web video */}
                  {isVideo && Platform.OS === 'web' && (
-                     <video
-                         id="web-video-player-element" // Use same ID as audio for simplicity? Or different? Let's use audio ID.
-                         style={styles.fullPlayerVideoWeb} // Use different style if needed
-                         src={media.uri}
-                         preload="metadata"
-                         crossOrigin="anonymous"
-                         // Controls managed by WebAudioPlayer logic
-                     />
+                     <View style={styles.fullPlayerVideoWebPlaceholder}>
+                        {/* The actual <video> element is managed elsewhere */}
+                     </View>
                  )}
 
 
@@ -525,7 +526,7 @@ const FullScreenPlayer = ({
                 </View>
 
                 <View style={styles.fullPlayerBottomActions}>
-                     {/* Lyrics Button (Web Audio Only) */}
+                     {/* Lyrics Button (Web Audio Only, Gemini enabled) */}
                      {media?.type === 'audio' && Platform.OS === 'web' && genAI ? (
                         <TouchableOpacity onPress={onShowLyrics} style={styles.fullPlayerActionButton} disabled={isFetchingLyrics}>
                             {isFetchingLyrics
@@ -610,7 +611,7 @@ const MiniPlayerBar = ({ currentMedia, playbackStatus, isLoading, onPlayPause, o
     const progress = (duration > 0 && Number.isFinite(duration) && Number.isFinite(position))
                      ? Math.max(0, Math.min(1, position / duration))
                      : 0;
-    const placeholder = require('../assets/placeholder.png'); // Ensure path is correct
+    const placeholder = require('../assets/placeholder.png'); // ADJUST PATH IF NEEDED
 
     // Determine image source
     const imageSource = useMemo(() => {
@@ -644,7 +645,7 @@ const MiniPlayerBar = ({ currentMedia, playbackStatus, isLoading, onPlayPause, o
                     disabled={isLoading || (playbackStatus && !playbackStatus.isLoaded && !playbackStatus.error)}
                 >
                     {/* Show buffering/loading indicator */}
-                    {(isLoading && currentMedia?.id === currentMedia?.id) || playbackStatus?.isBuffering
+                    {isLoading || playbackStatus?.isBuffering
                         ? <ActivityIndicator size="small" color="white" />
                         : <Ionicons name={isPlaying ? 'pause' : 'play'} size={30} color="white" />
                     }
@@ -674,7 +675,7 @@ const ImageViewerModal = ({ isVisible, images, initialIndex, onClose, onIndexCha
             stopSlideshow();
         }
         return () => stopSlideshow(); // Cleanup on unmount
-    }, [isVisible]);
+    }, [isVisible, stopSlideshow]); // Added stopSlideshow dependency
 
     const handleIndexChange = (index) => {
         if (index !== currentIndex) { // Prevent updates if index hasn't changed
@@ -816,7 +817,7 @@ const CreatePlaylistModal = ({ isVisible, onCreate, onClose }) => {
         if (trimmedName) {
             onCreate(trimmedName);
             setPlaylistName(''); // Reset for next time
-            // onClose(); // Close modal after creation
+            // onClose(); // Keep modal open until explicitly closed by parent or cancel button
         } else {
             Alert.alert("Invalid Name", "Please enter a name for the playlist.");
         }
@@ -881,7 +882,7 @@ function LibraryScreen({
         }
     }, [isFocused, filterType, currentSort, searchQuery, isSearching, onViewParamsChange]);
 
-    // Web-specific sorting function
+    // Web-specific sorting function (memoized)
     const sortWebData = useCallback((data, sortBy) => {
         if (Platform.OS !== 'web' || !data || data.length === 0) return data;
 
@@ -1012,7 +1013,7 @@ function LibraryScreen({
     const handleLongPress = useCallback((item) => {
         const options = [];
         let message = `Type: ${item.type || 'Unknown'}`;
-        if (item.durationMillis != null && item.type !== 'image' && item.type !== 'lyrics') message += `\nDuration: ${formatTime(item.durationMillis)}`;
+        if (item.durationMillis != null && item.type !== 'image' && item.type !== 'lyrics' && item.type !== 'document') message += `\nDuration: ${formatTime(item.durationMillis)}`;
         if (item.addedDate) message += `\nAdded: ${new Date(item.addedDate * 1000).toLocaleDateString()}`;
         if (item.lastPlayed && Platform.OS === 'web') message += `\nPlayed: ${new Date(item.lastPlayed * 1000).toLocaleString()}`;
 
@@ -1228,7 +1229,7 @@ function SettingsScreen({ onScanDeviceMedia, onClearWebDB, isScanningNative, onP
                         />
                          <Text style={styles.settingDescription}>
                             Deletes all media references and playlists stored in the browser's IndexedDB. Requires app reload. This action cannot be undone.
-                        </Text>
+                         </Text>
                     </View>
                  )}
 
@@ -1236,10 +1237,10 @@ function SettingsScreen({ onScanDeviceMedia, onClearWebDB, isScanningNative, onP
                  <View style={styles.settingItem}>
                      <Text style={styles.settingTitle}>API Keys Status</Text>
                      <Text style={styles.settingDescription}>
-                         {`Gemini Key: ${GEMINI_API_KEY && GEMINI_API_KEY !== "YOUR_API_KEY_HERE" && GEMINI_API_KEY !== "AIzaSyDtzOBprQ3AvPrtieLJJjVf69X_PkotWT4" ? 'Loaded' : 'Missing/Placeholder'}`}
-                         {`\nSpotify ID: ${SPOTIFY_CLIENT_ID ? 'Loaded' : 'Missing'}`}
-                         {`\nSpotify Secret: ${SPOTIFY_CLIENT_SECRET ? 'Loaded' : 'Missing'}`}
-                         {(!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_API_KEY_HERE" || GEMINI_API_KEY === "AIzaSyDtzOBprQ3AvPrtieLJJjVf69X_PkotWT4" || !SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) && "\n(Some features like lyrics or metadata fetching might be disabled)"}
+                         {`Gemini Key: ${GEMINI_API_KEY && GEMINI_API_KEY !== "YOUR_API_KEY_HERE" ? 'Loaded' : 'Missing/Placeholder'}`}
+                         {`\nSpotify ID: ${SPOTIFY_CLIENT_ID && SPOTIFY_CLIENT_ID !== "YOUR_SPOTIFY_CLIENT_ID" ? 'Loaded' : 'Missing/Placeholder'}`}
+                         {`\nSpotify Secret: ${SPOTIFY_CLIENT_SECRET && SPOTIFY_CLIENT_SECRET !== "YOUR_SPOTIFY_CLIENT_SECRET" ? 'Loaded' : 'Missing/Placeholder'}`}
+                         {(!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_API_KEY_HERE" || !SPOTIFY_CLIENT_ID || SPOTIFY_CLIENT_ID === "YOUR_SPOTIFY_CLIENT_ID" || !SPOTIFY_CLIENT_SECRET || SPOTIFY_CLIENT_SECRET === "YOUR_SPOTIFY_CLIENT_SECRET") && "\n(Some features like lyrics or metadata fetching might be disabled)"}
                      </Text>
                      <Text style={[styles.settingDescription, { color: '#ffcc00', marginTop: 5 }]}>
                          Warning: API keys are exposed in the code. Use a secure method in production.
@@ -1548,10 +1549,10 @@ export default function App() {
 
     // --- Web Audio API Refs ---
     const audioContextRef = useRef(null); // Web Audio API Context
-    const audioSourceNodeRef = useRef(null); // Source node connected to <audio> element
+    const audioSourceNodeRef = useRef(null); // Source node connected to <audio>/<video> element
     const eqNodesRef = useRef([]); // Array of BiquadFilterNodes for EQ
     const gainNodeRef = useRef(null); // Master gain node
-    const webAudioElementRef = useRef(null); // Ref to the hidden <audio> element
+    const webAudioElementRef = useRef(null); // Ref to the hidden <audio>/<video> element
 
     // --- Database Operations (Web ONLY using idb) ---
     const initDB = useCallback(async () => {
@@ -1605,8 +1606,8 @@ export default function App() {
             };
             const id = await db.add(STORE_NAME, itemToAdd);
             console.log(`Added item with id ${id}:`, itemToAdd.name);
-            // Return the full item including the generated ID
-            return { ...itemToAdd, id };
+            // Return the full item including the generated ID and boolean isFavorite
+            return { ...itemToAdd, id, isFavorite: !!itemToAdd.isFavorite };
         } catch (error) {
             console.error(`Failed to add item ${item.name} to DB:`, error);
             if (error.name === 'ConstraintError') {
@@ -1616,7 +1617,8 @@ export default function App() {
                     const existing = await db.getFromIndex(STORE_NAME, 'uri_idx', item.uri);
                     if (existing) {
                         Alert.alert("Duplicate Item", `"${item.name}" already exists in the library (ID: ${existing.id}).`);
-                        return { ...existing, isFavorite: !!existing.isFavorite }; // Return existing item
+                        // Return existing item with boolean isFavorite
+                        return { ...existing, isFavorite: !!existing.isFavorite };
                     } else {
                          Alert.alert("Duplicate Item", `An item with the same URI already exists, but couldn't retrieve it.`);
                     }
@@ -1643,20 +1645,25 @@ export default function App() {
             const existingItem = await store.get(id);
 
             if (existingItem) {
-                // Create the updated item object
-                const updatedItem = { ...existingItem, ...updates };
+                // Create the updated item object for the database
+                const itemForDb = { ...existingItem, ...updates };
 
                 // Ensure isFavorite is stored as 0 or 1 in the DB
                 if (updates.hasOwnProperty('isFavorite')) {
-                    updatedItem.isFavorite = updates.isFavorite ? 1 : 0;
+                    itemForDb.isFavorite = updates.isFavorite ? 1 : 0;
                 }
 
-                await store.put(updatedItem);
+                await store.put(itemForDb);
                 await tx.done; // Wait for transaction completion
                 console.log(`Updated item id ${id} with:`, updates);
 
-                // Update state (ensure isFavorite is boolean in state)
-                const stateUpdate = { ...updates, isFavorite: !!updates.isFavorite };
+                // Prepare the update for the state (ensure isFavorite is boolean)
+                const stateUpdate = { ...updates };
+                if (updates.hasOwnProperty('isFavorite')) {
+                    stateUpdate.isFavorite = !!updates.isFavorite;
+                }
+
+                // Update library state
                 setLibrary(prevLibrary => prevLibrary.map(item =>
                     item.id === id ? { ...item, ...stateUpdate } : item
                 ));
@@ -1737,7 +1744,7 @@ export default function App() {
         if (Platform.OS === 'web') {
             // Web uses individual DB operations (add/update/deletePlaylist)
             // This function is mainly a state setter for web
-            // console.warn("savePlaylists called on web - state updated, but use individual DB ops for persistence.");
+            // console.log("savePlaylists called on web - state updated, but use individual DB ops for persistence.");
         } else {
             // Native: Save the entire array to AsyncStorage
             try {
@@ -1791,7 +1798,7 @@ export default function App() {
             return false;
         }
         // Ensure trackIds in updates is an array if present
-        if (updates.trackIds && !Array.isArray(updates.trackIds)) {
+        if (updates.hasOwnProperty('trackIds') && !Array.isArray(updates.trackIds)) {
             console.warn("updatePlaylist called with non-array trackIds, converting.");
             updates.trackIds = [];
         }
@@ -2087,7 +2094,7 @@ export default function App() {
             setIsLoading(false); // Turn off general loading indicator
         }
         return scannedItems; // Return the items found in this scan
-    }, [isScanningNative, checkAndRequestPermissions, favoriteIds]); // Added dependencies
+    }, [isScanningNative, checkAndRequestPermissions, favoriteIds, library]); // Added library dependency
 
     // --- Load Library (Handles Both Platforms) ---
     const loadLibraryFromDB = useCallback(async (sortBy = 'addedDate DESC') => {
@@ -2148,8 +2155,10 @@ export default function App() {
 
     // --- Initialization & App State ---
     useEffect(() => {
+        let isMounted = true; // Flag to track mount status
         const initializeApp = async () => {
             console.log("Starting App Initialization...");
+            if (!isMounted) return; // Prevent updates if unmounted
             setIsLoading(true);
             try {
                 // Configure audio settings for background playback etc.
@@ -2166,39 +2175,44 @@ export default function App() {
 
                 if (Platform.OS === 'web') {
                     await initDB(); // Initialize IndexedDB
-                    // Only load library/playlists if DB init was successful
-                    if (dbInitialized) {
+                    // Only load library/playlists if DB init was successful and component is still mounted
+                    if (dbInitialized && isMounted) {
                         await loadLibraryFromDB(currentViewParams.sort); // Load media library
                         await loadPlaylists(); // Load playlists from DB
                         await fetchSpotifyToken(); // Get initial Spotify token
-                    } else {
+                    } else if (isMounted) {
                          console.warn("DB not initialized after init attempt, skipping initial load.");
-                         // Keep loading indicator on, or show an error state?
-                         // Maybe set loading false here but library remains empty.
-                         setIsLoading(false);
+                         setIsLoading(false); // Turn off loading if DB failed
                     }
                 } else {
                     // Native: Check permissions, load persistent data (favs/playlists)
                     await checkAndRequestPermissions(); // Check/request permissions early
+                    if (!isMounted) return; // Check mount status after async call
                     await loadFavoritesFromStorage(); // Load favorite IDs
+                    if (!isMounted) return;
                     await loadPlaylists(); // Load playlists from AsyncStorage
                     // Library is loaded on demand via scan or manual add on Native
                     // Set initial library state to empty, scanning happens in Settings or on refresh
-                    setLibrary([]);
-                    setDbInitialized(false); // Not applicable
-                    setIsDbLoading(false); // Not applicable
-                    console.log("Native platform: Checked permissions, loaded favorites/playlists. Library empty initially.");
-                    setIsLoading(false); // Initial setup done for native
+                    if (isMounted) {
+                        setLibrary([]);
+                        setDbInitialized(false); // Not applicable
+                        setIsDbLoading(false); // Not applicable
+                        console.log("Native platform: Checked permissions, loaded favorites/playlists. Library empty initially.");
+                        setIsLoading(false); // Initial setup done for native
+                    }
                 }
-                console.log("App Initialization sequence potentially complete.");
+                if (isMounted) {
+                    console.log("App Initialization sequence potentially complete.");
+                }
             } catch (error) {
                  console.error("App Initialization failed:", error);
                  Alert.alert("Initialization Error", `Failed to initialize the app: ${error.message}`);
-                 setIsLoading(false); // Ensure loading is turned off on error
+                 if (isMounted) setIsLoading(false); // Ensure loading is turned off on error
             } finally {
                  // Ensure loading is off if not already turned off by platform-specific logic
-                 // This might be redundant but safe.
-                 // setIsLoading(false);
+                 if (isMounted && isLoading) {
+                    // setIsLoading(false); // Already handled in most paths, but safe fallback
+                 }
             }
         };
         initializeApp();
@@ -2222,12 +2236,14 @@ export default function App() {
                  console.log('App has gone to the background.');
                  // Potential background tasks or state saving could happen here
             }
-            setAppState(nextAppState); // Update state
+            // Update state only if mounted
+            if (isMounted) setAppState(nextAppState);
         };
         const subscription = AppState.addEventListener('change', handleAppStateChange);
 
         // Cleanup function on component unmount
         return () => {
+            isMounted = false; // Set flag
             console.log("Cleaning up App component...");
             subscription.remove(); // Remove AppState listener
 
@@ -2261,11 +2277,13 @@ export default function App() {
                      webAudioElementRef.current.pause();
                      webAudioElementRef.current.removeAttribute('src');
                      webAudioElementRef.current.load();
+                     // Optionally remove the element from DOM?
+                     // webAudioElementRef.current.remove();
                  }
              }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Run only once on mount
+    }, [dbInitialized]); // Added dbInitialized dependency to re-run init logic if it changes
 
     // --- Spotify API ---
     const fetchSpotifyToken = useCallback(async () => {
@@ -2276,9 +2294,9 @@ export default function App() {
         }
 
         console.log("Fetching new Spotify token...");
-        // Check if credentials are provided
-        if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
-            console.warn("Spotify client ID or secret missing. Cannot fetch token.");
+        // Check if credentials are provided and not placeholders
+        if (!SPOTIFY_CLIENT_ID || SPOTIFY_CLIENT_ID === "YOUR_SPOTIFY_CLIENT_ID" || !SPOTIFY_CLIENT_SECRET || SPOTIFY_CLIENT_SECRET === "YOUR_SPOTIFY_CLIENT_SECRET") {
+            console.warn("Spotify client ID or secret missing/placeholder. Cannot fetch token.");
             return null;
         }
 
@@ -2295,7 +2313,8 @@ export default function App() {
             });
 
             if (!response.ok) {
-                throw new Error(`Spotify token request failed: ${response.status} ${response.statusText}`);
+                const errorBody = await response.text(); // Read error body for more details
+                throw new Error(`Spotify token request failed: ${response.status} ${response.statusText} - ${errorBody}`);
             }
 
             const data = await response.json();
@@ -2348,7 +2367,8 @@ export default function App() {
             console.log(`Searching Spotify for: "${searchTerm}"`);
             const searchUrl = `${SPOTIFY_SEARCH_URL}?q=${encodeURIComponent(searchTerm)}&type=track&limit=5`; // Limit results
 
-            const response = await fetch(searchUrl, { headers: { 'Authorization': `Bearer ${currentToken}` } });
+            let response = await fetch(searchUrl, { headers: { 'Authorization': `Bearer ${currentToken}` } });
+            let data;
 
             if (!response.ok) {
                  // Handle expired token specifically
@@ -2358,17 +2378,22 @@ export default function App() {
                      currentToken = await fetchSpotifyToken(); // Get a new token immediately
                      if (!currentToken) throw new Error("Failed to refresh Spotify token.");
                      // Retry the search with the new token
-                     const retryResponse = await fetch(searchUrl, { headers: { 'Authorization': `Bearer ${currentToken}` } });
-                     if (!retryResponse.ok) throw new Error(`Spotify search failed after retry: ${retryResponse.status}`);
-                     const data = await retryResponse.json();
-                     // Continue processing with 'data' below
+                     response = await fetch(searchUrl, { headers: { 'Authorization': `Bearer ${currentToken}` } });
+                     if (!response.ok) {
+                        const errorBody = await response.text();
+                        throw new Error(`Spotify search failed after retry: ${response.status} - ${errorBody}`);
+                     }
+                     data = await response.json(); // Process retry response
                  } else {
                      // Other HTTP errors
-                     throw new Error(`Spotify search failed: ${response.status}`);
+                     const errorBody = await response.text();
+                     throw new Error(`Spotify search failed: ${response.status} - ${errorBody}`);
                  }
+            } else {
+                data = await response.json(); // Process original successful response
             }
+
             // Process successful response (or retry response)
-            const data = await response.json();
             const tracks = data.tracks?.items;
 
             if (tracks && tracks.length > 0) {
@@ -2552,6 +2577,8 @@ export default function App() {
                 error: null, // Clear any previous error
                 didJustFinish: false, // Reset finish flag
             }));
+            // If we were loading, turn off the indicator now that it's confirmed not loaded
+            if (isLoading) setIsLoading(false);
         } else {
             // Main update logic for loaded playback
             const newStatus = {
@@ -2569,6 +2596,11 @@ export default function App() {
             };
             setPlaybackStatus(newStatus);
 
+            // Turn off loading indicator if it was on and we are now loaded and not buffering
+            if (isLoading && !newStatus.isBuffering) {
+                setIsLoading(false);
+            }
+
             // Handle track finishing (if not looping)
             if (status.didJustFinish && !newStatus.isLooping) {
                 console.log("Track finished, playing next.");
@@ -2576,7 +2608,7 @@ export default function App() {
                 requestAnimationFrame(() => handleNextTrack());
             }
         }
-    }, [currentMedia?.id, currentMedia?.durationMillis, isLooping, rate, volume, handleNextTrack, handleStopPlayback]); // Added dependencies
+    }, [currentMedia?.id, currentMedia?.durationMillis, isLooping, rate, volume ]); // Added isLoading dependency
 
 
     // --- Build Playback Queue ---
@@ -2586,6 +2618,27 @@ export default function App() {
 
         let queueSource;
         let sourceDescription;
+
+        // Memoized web sort function (defined within App component scope or passed in)
+        const sortWebData = (data, sortBy) => {
+            if (Platform.OS !== 'web' || !data || data.length === 0) return data;
+            const [sortField, sortDirection] = sortBy.split(' ');
+            const directionMultiplier = sortDirection === 'DESC' ? -1 : 1;
+            return [...data].sort((a, b) => {
+                let valA = a[sortField]; let valB = b[sortField];
+                if (valA == null && valB == null) return 0;
+                if (valA == null) return 1 * directionMultiplier;
+                if (valB == null) return -1 * directionMultiplier;
+                if (typeof valA === 'string' && typeof valB === 'string') {
+                    return valA.localeCompare(valB, undefined, { sensitivity: 'base' }) * directionMultiplier;
+                } else if (typeof valA === 'number' && typeof valB === 'number') {
+                    return (valA - valB) * directionMultiplier;
+                } else {
+                    const strA = String(valA); const strB = String(valB);
+                    return strA.localeCompare(strB, undefined, { sensitivity: 'base' }) * directionMultiplier;
+                }
+            });
+        };
 
         // 1. Determine the source list for the queue
         if (explicitQueue && Array.isArray(explicitQueue)) {
@@ -2651,7 +2704,7 @@ export default function App() {
         console.log(`Queue built from ${sourceDescription}. Size: ${playableQueue.length}. Current index: ${newIndex}`);
         return playableQueue; // Return the generated playable queue
 
-    }, [library, currentViewParams, currentMedia?.id, sortWebData]); // Dependencies
+    }, [library, currentViewParams, currentMedia?.id]); // Dependencies
 
     // Effect to rebuild queue when view params or library change,
     // but *only* if no explicit queue was just set (heuristic).
@@ -2661,18 +2714,18 @@ export default function App() {
         // The `loadAndPlayMedia` function handles setting the explicit queue.
         // We assume if the current media exists and is *not* found in the queue derived
         // from the current view params, then an explicit queue is likely active.
-        // This is an indirect way to manage this; a dedicated flag might be more robust.
 
         // Build a temporary queue based on current view to check against
-        const viewBasedQueue = buildPlaybackQueue(library, currentViewParams); // This call updates state, but we use the return value here
+        // Note: This call *will* update state via buildPlaybackQueue's setters.
+        const viewBasedQueue = buildPlaybackQueue(library, currentViewParams);
 
         // If currentMedia exists, check if it's in the queue derived from the view
         if (currentMedia) {
             const indexInViewQueue = viewBasedQueue.findIndex(item => item.id === currentMedia.id);
             if (indexInViewQueue === -1) {
                 // Current media is not in the view-based queue. Assume an explicit queue is active.
-                // Do nothing, let the explicit queue persist.
-                // console.log("Current media not in view-based queue, likely explicit queue active. Skipping view-based rebuild.");
+                // Do nothing, let the explicit queue persist (it was set by loadAndPlayMedia).
+                // console.log("Current media not in view-based queue, likely explicit queue active. Skipping view-based rebuild trigger.");
             } else {
                 // Current media *is* in the view-based queue. Ensure the state reflects this.
                 // The buildPlaybackQueue call above already updated the state.
@@ -2695,9 +2748,11 @@ export default function App() {
             Alert.alert("Error", "Cannot play the selected item (invalid data or URI).");
             return;
         }
-        // Avoid reloading the same item if already loading
-        if (isLoading && currentMedia?.id === item.id) {
-            console.log("loadAndPlayMedia: Already loading this item, ignoring request.");
+        // Avoid reloading the same item if already loading or playing
+        if ((isLoading && currentMedia?.id === item.id) || (playbackStatus?.isLoaded && currentMedia?.id === item.id)) {
+            console.log("loadAndPlayMedia: Already loading or playing this item, ignoring request.");
+            // If it's playing, maybe just bring player to front?
+            if (playbackStatus?.isPlaying) setIsPlayerFullScreen(true);
             return;
         }
 
@@ -2737,24 +2792,33 @@ export default function App() {
                 if (Platform.OS === 'web') {
                     console.log("Web platform: Delegating load to WebAudioPlayer component via state change.");
                     // The WebAudioPlayer useEffect hook will detect the change in `currentMedia`
-                    // and update the <audio> element's src, triggering the load.
-                    // We need to ensure the <audio>/<video> element exists and is ready.
-                    const audioElement = webAudioElementRef.current;
-                    if (audioElement) {
+                    // and update the <audio>/<video> element's src, triggering the load.
+                    const mediaElement = webAudioElementRef.current;
+                    if (mediaElement) {
                         // Set src and other properties directly here as well for immediate effect
-                        if (audioElement.src !== item.uri) {
-                            audioElement.src = item.uri;
-                            audioElement.load(); // Important to call load()
+                        if (mediaElement.src !== item.uri) {
+                            mediaElement.src = item.uri;
+                            mediaElement.load(); // Important to call load()
                         }
-                        audioElement.playbackRate = rate;
-                        audioElement.loop = isLooping;
+                        mediaElement.playbackRate = rate;
+                        mediaElement.loop = isLooping;
+                        // Volume is handled by GainNode, not element
                         if (playImmediately) {
                              // Attempt to play, might require user interaction initially
-                             audioElement.play().catch(e => console.warn("Web Audio play() failed:", e));
+                             mediaElement.play().catch(e => {
+                                 console.warn("Web Audio play() failed initially (may need user interaction):", e);
+                                 // Update status to reflect paused state if play fails
+                                 setPlaybackStatus(prev => prev ? { ...prev, isPlaying: false, isBuffering: false } : null);
+                                 setIsLoading(false); // Turn off loading if play fails immediately
+                             });
+                        } else {
+                            // If not playing immediately, ensure loading indicator is managed by status updates
+                            // It might already be loaded metadata, so turn off loading if not buffering
+                            if (!playbackStatus?.isBuffering) setIsLoading(false);
                         }
                     } else {
-                        console.error("Web audio element ref not found!");
-                        throw new Error("Web audio element not ready.");
+                        console.error("Web audio/video element ref not found!");
+                        throw new Error("Web media element not ready.");
                     }
 
                 } else {
@@ -2780,6 +2844,7 @@ export default function App() {
                     );
                     setPlaybackInstance(soundObject); // Store the sound object instance
                     console.log("Native media loaded successfully.");
+                    // isLoading will be set to false by onPlaybackStatusUpdate when ready/not buffering
                 }
 
                 // Update last played timestamp (Web only, using DB)
@@ -2797,7 +2862,7 @@ export default function App() {
                 console.log("Loading image viewer...");
                 // Build image list based on the *current playback queue source* (either explicit or view-based)
                 // Filter this source for images only.
-                const currentContextImages = newQueue // Use the queue generated above
+                const currentContextImages = library // Use full library as base for images
                                           .filter(libItem => libItem.type === 'image'); // Filter for images
 
                 // Find the index of the selected image within this context
@@ -2847,18 +2912,18 @@ export default function App() {
             await handleStopPlayback(true); // Unload on error
             setCurrentMedia(null); // Clear media state
             setPlaybackStatus({ isLoaded: false, isPlaying: false, isBuffering: false, error: error.message }); // Set error status
+            setIsLoading(false); // Ensure loading is off on error
         } finally {
-            // Ensure loading is turned off *unless* it's audio/video which might still be buffering
+            // Loading state is now primarily managed by onPlaybackStatusUpdate for audio/video
+            // Ensure it's off for non-playable types handled above
             if (item.type !== 'audio' && item.type !== 'video') {
                  setIsLoading(false);
             }
-            // For audio/video, the onPlaybackStatusUpdate will handle setting isLoading=false
-            // once buffering finishes or an error occurs. We leave isLoading=true for now.
         }
     }, [
-        isLoading, currentMedia?.id, playbackInstance, onPlaybackStatusUpdate,
+        isLoading, currentMedia?.id, playbackStatus, playbackInstance, onPlaybackStatusUpdate,
         searchSpotifyAndFetchMetadata, updateMediaInDB, dbInitialized, volume, rate,
-        isLooping, library, currentViewParams, handleStopPlayback, handleResetEq,
+        isLooping, library, currentViewParams,
         buildPlaybackQueue // Added dependencies
     ]);
 
@@ -2871,23 +2936,23 @@ export default function App() {
         }
 
         if (Platform.OS === 'web') {
-            const audioElement = webAudioElementRef.current;
-            if (!audioElement) {
-                console.error("Web audio element not found for play/pause.");
+            const mediaElement = webAudioElementRef.current;
+            if (!mediaElement) {
+                console.error("Web media element not found for play/pause.");
                 return;
             }
             try {
                 if (playbackStatus.isPlaying) {
-                    audioElement.pause();
-                    console.log("Web audio paused.");
+                    mediaElement.pause();
+                    console.log("Web media paused.");
                 } else {
                     // Resume AudioContext if suspended (required by browser policy)
                     if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
                         await audioContextRef.current.resume();
                         console.log("Web AudioContext resumed.");
                     }
-                    await audioElement.play();
-                    console.log("Web audio playing.");
+                    await mediaElement.play();
+                    console.log("Web media playing.");
                 }
                 // Status update will be triggered by element events
             } catch (error) {
@@ -2933,14 +2998,14 @@ export default function App() {
         console.log(`Seeking to ${formatTime(seekPosition)} / ${formatTime(duration)}`);
 
         if (Platform.OS === 'web') {
-            const audioElement = webAudioElementRef.current;
-            if (audioElement) {
+            const mediaElement = webAudioElementRef.current;
+            if (mediaElement) {
                 try {
-                    audioElement.currentTime = seekPosition / 1000; // Web Audio uses seconds
+                    mediaElement.currentTime = seekPosition / 1000; // Web Audio uses seconds
                     // Manually update status position immediately for better responsiveness
                     setPlaybackStatus(prev => prev ? { ...prev, positionMillis: seekPosition } : null);
                 } catch (error) {
-                    console.error("Error seeking web audio:", error);
+                    console.error("Error seeking web media:", error);
                 }
             }
         } else {
@@ -2963,14 +3028,14 @@ export default function App() {
 
         // Stop Web Playback
         if (Platform.OS === 'web') {
-            const audioElement = webAudioElementRef.current;
-            if (audioElement) {
-                audioElement.pause();
+            const mediaElement = webAudioElementRef.current;
+            if (mediaElement) {
+                mediaElement.pause();
                 if (shouldUnload) {
                     // Clear source and reset
-                    audioElement.removeAttribute('src');
-                    audioElement.load(); // Reset element state
-                    console.log("Web audio source cleared.");
+                    mediaElement.removeAttribute('src');
+                    mediaElement.load(); // Reset element state
+                    console.log("Web media source cleared.");
                     // Disconnect the source node from the graph if it exists
                     if (audioSourceNodeRef.current) {
                         try { audioSourceNodeRef.current.disconnect(); } catch(e) { /* Ignore */ }
@@ -2979,7 +3044,7 @@ export default function App() {
                     }
                 } else {
                     // If not unloading, just seek to beginning
-                    audioElement.currentTime = 0;
+                    mediaElement.currentTime = 0;
                 }
             }
         } else {
@@ -3017,6 +3082,7 @@ export default function App() {
             setIsPlayerFullScreen(false); // Close full screen player
             setCurrentLyricsChords(''); // Clear lyrics
             setPlaybackQueue([]); // Clear the queue itself
+            setIsLoading(false); // Ensure loading is off when fully stopped/unloaded
             console.log("Playback state cleared.");
         } else {
              // If just stopping (not unloading), update status to reflect stopped state
@@ -3099,8 +3165,8 @@ export default function App() {
         console.log(`Setting rate to: ${nextRate}`);
 
         if (Platform.OS === 'web') {
-            const audioElement = webAudioElementRef.current;
-            if (audioElement) audioElement.playbackRate = nextRate;
+            const mediaElement = webAudioElementRef.current;
+            if (mediaElement) mediaElement.playbackRate = nextRate;
              // Update playback status state
              setPlaybackStatus(prev => prev ? { ...prev, rate: nextRate } : null);
         } else if (playbackInstance && playbackStatus?.isLoaded) {
@@ -3120,8 +3186,8 @@ export default function App() {
         console.log(`Setting loop to: ${nextIsLooping}`);
 
         if (Platform.OS === 'web') {
-            const audioElement = webAudioElementRef.current;
-            if (audioElement) audioElement.loop = nextIsLooping;
+            const mediaElement = webAudioElementRef.current;
+            if (mediaElement) mediaElement.loop = nextIsLooping;
              // Update playback status state
              setPlaybackStatus(prev => prev ? { ...prev, isLooping: nextIsLooping } : null);
         } else if (playbackInstance && playbackStatus?.isLoaded) {
@@ -3217,6 +3283,7 @@ export default function App() {
                                     let timeoutId = setTimeout(() => {
                                         tempElement.onerror = null; // Clear handlers
                                         tempElement.onloadedmetadata = null;
+                                        tempElement.src = ''; // Clear src to stop loading
                                         reject(new Error(`Metadata load timeout for ${file.name}`));
                                     }, METADATA_LOAD_TIMEOUT);
 
@@ -3256,7 +3323,7 @@ export default function App() {
                         if (addedItem) {
                             addedCount++;
                             // Add to list for state update (ensure isFavorite is boolean)
-                            newItemsForState.push({...addedItem, isFavorite: !!addedItem.isFavorite});
+                            newItemsForState.push(addedItem); // addMediaToDB now returns correct format
                         } else {
                             // If addMediaToDB failed (e.g., duplicate), revoke the URL
                             if (uri) URL.revokeObjectURL(uri);
@@ -3307,8 +3374,7 @@ export default function App() {
             const result = await DocumentPicker.getDocumentAsync({
                 type: ["audio/*", "video/*", "image/*"], // Specify desired MIME types
                 multiple: true, // Allow selecting multiple files
-                copyToCacheDirectory: false, // Try to use original URI (might be content://) - potentially less reliable? Test this.
-                                            // Setting to true might be more reliable but uses more space temporarily.
+                copyToCacheDirectory: true, // Copying to cache is generally more reliable for accessing duration/playback
             });
 
             // console.log("Document Picker Result:", JSON.stringify(result, null, 2)); // Detailed log
@@ -3346,8 +3412,8 @@ export default function App() {
                             // Create sound object just to get status, don't play
                             const { sound: tempSound, status } = await Audio.Sound.createAsync(
                                 { uri: asset.uri },
-                                { shouldPlay: false }
-                                // downloadFirst: false // Don't download if not necessary for duration
+                                { shouldPlay: false },
+                                false // downloadFirst: false - Don't download if not necessary for duration
                             );
                             sound = tempSound; // Keep ref for unloading
                             if (status.isLoaded && status.durationMillis) {
@@ -3371,7 +3437,7 @@ export default function App() {
                         // Generate a unique ID for manually added native items
                         id: `manual_${generateUniqueId()}`,
                         name: asset.name || `Unnamed ${fileType}`,
-                        uri: asset.uri, // The URI from the picker
+                        uri: asset.uri, // The URI from the picker (likely in cache)
                         type: fileType,
                         durationMillis: durationMillis,
                         // Use lastModifiedDate or fallback to now for addedDate
@@ -3441,18 +3507,30 @@ export default function App() {
                         // Also remove track ID from all playlists in IndexedDB
                         if (success) {
                             console.log(`Removing track ${itemToDelete.id} from all web playlists...`);
-                            const currentPlaylists = await dbInstancePromise.then(db => db.getAll(PLAYLIST_STORE_NAME));
-                            const updatePromises = currentPlaylists.map(p => {
-                                const updatedTrackIds = (p.trackIds || []).filter(tid => tid !== itemToDelete.id);
-                                // Only update if the track was actually in the playlist
-                                if (updatedTrackIds.length !== (p.trackIds || []).length) {
-                                    return updatePlaylist(p.id, { trackIds: updatedTrackIds });
+                            try {
+                                const db = await dbInstancePromise;
+                                const currentPlaylists = await db.getAll(PLAYLIST_STORE_NAME);
+                                const updatePromises = currentPlaylists.map(p => {
+                                    const originalTrackIds = p.trackIds || [];
+                                    const updatedTrackIds = originalTrackIds.filter(tid => tid !== itemToDelete.id);
+                                    // Only update if the track was actually in the playlist
+                                    if (updatedTrackIds.length !== originalTrackIds.length) {
+                                        return updatePlaylist(p.id, { trackIds: updatedTrackIds });
+                                    }
+                                    return Promise.resolve(true); // No update needed, resolve as success
+                                });
+                                const results = await Promise.all(updatePromises);
+                                if (results.some(res => !res)) { // Check if any update failed
+                                    console.warn("One or more playlist updates failed during track deletion.");
+                                    // Decide if this constitutes overall failure? For now, proceed.
                                 }
-                                return Promise.resolve(); // No update needed
-                            });
-                            await Promise.all(updatePromises);
-                            // Reload playlists state from DB after updates
-                            await loadPlaylists();
+                                // Reload playlists state from DB after updates
+                                await loadPlaylists();
+                            } catch (playlistError) {
+                                console.error("Error updating playlists during track deletion:", playlistError);
+                                // Mark overall success as potentially false?
+                                // success = false; // Or just log the error and continue UI update
+                            }
                         }
                     } else {
                         // Native: No persistent DB deletion, just remove from session state and persistent lists (favs/playlists)
@@ -3470,8 +3548,9 @@ export default function App() {
                         // Remove from playlists (AsyncStorage)
                         let playlistsModified = false;
                         const updatedNativePlaylists = playlists.map(p => {
-                            const updatedTrackIds = (p.trackIds || []).filter(tid => tid !== itemToDelete.id);
-                            if (updatedTrackIds.length !== (p.trackIds || []).length) {
+                            const originalTrackIds = p.trackIds || [];
+                            const updatedTrackIds = originalTrackIds.filter(tid => tid !== itemToDelete.id);
+                            if (updatedTrackIds.length !== originalTrackIds.length) {
                                 playlistsModified = true;
                                 return { ...p, trackIds: updatedTrackIds };
                             }
@@ -3585,237 +3664,266 @@ export default function App() {
     }, [dbInitialized, initDB, loadLibraryFromDB, fetchSpotifyToken, fetchMissingMetadataInBackground, scanNativeMedia, loadFavoritesFromStorage, loadPlaylists]); // Dependencies
 
     // --- Web Audio Player Element & EQ Setup ---
+    // This useMemo hook returns a side-effect component responsible for managing the Web Audio API
     const WebAudioPlayer = useMemo(() => {
         if (Platform.OS !== 'web') return null; // Render nothing on native
 
-        const audioElementId = 'web-audio-player-element'; // Consistent ID
+        const audioElementId = 'web-audio-player-element'; // Consistent ID for audio/video element
 
-        // Effect to initialize AudioContext and nodes (runs once)
-        useEffect(() => {
-             if (!audioContextRef.current) { // Only initialize if not already done
-                 try {
-                     console.log("Initializing Web Audio API Context and Nodes...");
-                     // Create AudioContext
-                     const context = new (window.AudioContext || window.webkitAudioContext)();
-                     audioContextRef.current = context;
+        // Component responsible for Web Audio setup and management
+        const WebAudioManager = () => {
+            // Effect to initialize AudioContext and nodes (runs once)
+            useEffect(() => {
+                 if (!audioContextRef.current) { // Only initialize if not already done
+                     try {
+                         console.log("Initializing Web Audio API Context and Nodes...");
+                         // Create AudioContext
+                         const context = new (window.AudioContext || window.webkitAudioContext)();
+                         audioContextRef.current = context;
 
-                     // Create Master Gain Node
-                     const gain = context.createGain();
-                     gain.gain.setValueAtTime(volume, context.currentTime); // Set initial volume
-                     gainNodeRef.current = gain;
+                         // Create Master Gain Node
+                         const gain = context.createGain();
+                         gain.gain.setValueAtTime(volume, context.currentTime); // Set initial volume
+                         gainNodeRef.current = gain;
 
-                     // Create EQ Filter Nodes
-                     const eqNodes = EQ_BANDS.map((band, index) => {
-                         const filter = context.createBiquadFilter();
-                         filter.type = band.type;
-                         filter.frequency.setValueAtTime(band.freq, context.currentTime);
-                         filter.Q.setValueAtTime(band.Q, context.currentTime);
-                         // Set initial gain from state (or 0 if state not ready)
-                         filter.gain.setValueAtTime(eqGains[index] ?? 0, context.currentTime);
-                         return filter;
-                     });
-                     eqNodesRef.current = eqNodes;
+                         // Create EQ Filter Nodes
+                         const eqNodes = EQ_BANDS.map((band, index) => {
+                             const filter = context.createBiquadFilter();
+                             filter.type = band.type;
+                             filter.frequency.setValueAtTime(band.freq, context.currentTime);
+                             filter.Q.setValueAtTime(band.Q, context.currentTime);
+                             // Set initial gain from state (or 0 if state not ready)
+                             filter.gain.setValueAtTime(eqGains[index] ?? 0, context.currentTime);
+                             return filter;
+                         });
+                         eqNodesRef.current = eqNodes;
 
-                     // Connect nodes: Source -> EQ (if any) -> Gain -> Destination
-                     let sourceOutputNode = gain; // Default to gain if no EQ
-                     if (eqNodes.length > 0) {
-                         // Chain EQ nodes together
-                         for (let i = 0; i < eqNodes.length - 1; i++) {
-                             eqNodes[i].connect(eqNodes[i + 1]);
+                         // Connect nodes: Source -> EQ (if any) -> Gain -> Destination
+                         let sourceInputNode = gain; // Default target is gain if no EQ
+                         if (eqNodes.length > 0) {
+                             // Chain EQ nodes together
+                             for (let i = 0; i < eqNodes.length - 1; i++) {
+                                 eqNodes[i].connect(eqNodes[i + 1]);
+                             }
+                             // Connect last EQ node to Gain node
+                             eqNodes[eqNodes.length - 1].connect(gain);
+                             // The source will connect to the *first* EQ node
+                             sourceInputNode = eqNodes[0];
                          }
-                         // Connect last EQ node to Gain node
-                         eqNodes[eqNodes.length - 1].connect(gain);
-                         // The source will connect to the *first* EQ node
-                         sourceOutputNode = eqNodes[0];
+                         // Connect Gain node to the output destination (speakers)
+                         gain.connect(context.destination);
+
+                         console.log("Web Audio graph initialized. Source should connect to:", sourceInputNode);
+
+                         // Find or create the hidden <audio>/<video> element
+                         let mediaElement = document.getElementById(audioElementId);
+                         if (!mediaElement) {
+                             console.log("Creating hidden media element...");
+                             // Create audio initially, can be switched later if needed? Or just use audio?
+                             // Let's stick to audio for now, video handled by FullScreenPlayer component directly.
+                             // UPDATE: Let's create a generic media element container and add audio/video inside?
+                             // Simpler: Just use one element and change its tag or handle type in FullScreenPlayer.
+                             // Let's assume FullScreenPlayer renders the <video> tag when needed,
+                             // and we manage the <audio> tag here for audio playback.
+                             // REVISED: Manage a single element, use its ID. FullScreenPlayer will render its own <video> if needed.
+                             mediaElement = document.createElement('audio'); // Create <audio> element
+                             mediaElement.id = audioElementId;
+                             mediaElement.style.display = 'none'; // Keep it hidden
+                             mediaElement.preload = "metadata"; // Preload metadata only
+                             mediaElement.crossOrigin = "anonymous"; // Needed for some sources?
+                             document.body.appendChild(mediaElement);
+                         }
+                         webAudioElementRef.current = mediaElement; // Store ref
+
+                     } catch (e) {
+                         console.error("Web Audio API setup failed:", e);
+                         Alert.alert("Audio Error", "Web Audio API not supported or failed to initialize.");
                      }
-                     // Connect Gain node to the output destination (speakers)
-                     gain.connect(context.destination);
-
-                     console.log("Web Audio graph initialized.");
-
-                     // Add the <audio> element to the DOM if it doesn't exist
-                     let audioElement = document.getElementById(audioElementId);
-                     if (!audioElement) {
-                         console.log("Creating hidden <audio> element...");
-                         audioElement = document.createElement('audio');
-                         audioElement.id = audioElementId;
-                         audioElement.style.display = 'none'; // Keep it hidden
-                         audioElement.preload = "metadata"; // Preload metadata only
-                         audioElement.crossOrigin = "anonymous"; // Needed for some sources?
-                         document.body.appendChild(audioElement);
-                         webAudioElementRef.current = audioElement; // Store ref
-                     }
-
-                 } catch (e) {
-                     console.error("Web Audio API setup failed:", e);
-                     Alert.alert("Audio Error", "Web Audio API not supported or failed to initialize.");
                  }
-             }
-             // No cleanup needed here as context/nodes persist for app lifetime
-        }, []); // Empty dependency array: Run only once on mount
+                 // No cleanup needed here for context/nodes as they persist for app lifetime
+            }, []); // Empty dependency array: Run only once on mount
 
-        // Effect to manage audio element source and state based on currentMedia
-        useEffect(() => {
-            if (Platform.OS !== 'web' || !audioContextRef.current || !webAudioElementRef.current) return;
+            // Effect to manage audio element source and state based on currentMedia (AUDIO ONLY)
+            useEffect(() => {
+                if (Platform.OS !== 'web' || !audioContextRef.current || !webAudioElementRef.current) return;
 
-            const audioElement = webAudioElementRef.current;
-            const context = audioContextRef.current;
-            const gain = gainNodeRef.current;
-            const eqNodes = eqNodesRef.current;
+                const audioElement = webAudioElementRef.current;
+                const context = audioContextRef.current;
+                const gain = gainNodeRef.current;
+                const eqNodes = eqNodesRef.current;
 
-            // Check if we have a playable media item with a URI
-            if (currentMedia && (currentMedia.type === 'audio' || currentMedia.type === 'video') && currentMedia.uri) {
-                console.log("WebAudioPlayer Effect: Updating source/state for", currentMedia.name);
-                // Ensure AudioContext is running (browsers might suspend it)
-                if (context.state === 'suspended') {
-                    context.resume().catch(e => console.warn("Failed to resume AudioContext:", e));
-                }
-
-                // Create MediaElementSourceNode if it doesn't exist or URI changed
-                // It's generally safer to recreate the source node when the src changes.
-                if (audioSourceNodeRef.current) {
-                    try { audioSourceNodeRef.current.disconnect(); } catch(e) {} // Disconnect old source
-                }
-                try {
-                    audioSourceNodeRef.current = context.createMediaElementSource(audioElement);
-                    // Connect source to the first EQ node or Gain node
-                    const firstNode = eqNodes.length > 0 ? eqNodes[0] : gain;
-                    if (firstNode) {
-                        audioSourceNodeRef.current.connect(firstNode);
-                        console.log("Web audio source node connected.");
-                    } else {
-                         console.error("Could not connect source node: No EQ or Gain node found.");
+                // Check if we have an AUDIO media item with a URI
+                if (currentMedia && currentMedia.type === 'audio' && currentMedia.uri) {
+                    console.log("WebAudioManager Effect: Updating source/state for AUDIO", currentMedia.name);
+                    // Ensure AudioContext is running (browsers might suspend it)
+                    if (context.state === 'suspended') {
+                        context.resume().catch(e => console.warn("Failed to resume AudioContext:", e));
                     }
-                } catch (error) {
-                    console.error("Error creating/connecting MediaElementSourceNode:", error);
-                    // Handle error appropriately, maybe stop playback
-                    handleStopPlayback(true);
-                    return; // Exit effect
+
+                    // Create MediaElementSourceNode if it doesn't exist or URI changed
+                    if (!audioSourceNodeRef.current || audioElement.src !== currentMedia.uri) {
+                        if (audioSourceNodeRef.current) {
+                            try { audioSourceNodeRef.current.disconnect(); } catch(e) {} // Disconnect old source
+                        }
+                        try {
+                            audioSourceNodeRef.current = context.createMediaElementSource(audioElement);
+                            // Connect source to the first EQ node or Gain node
+                            const firstNode = eqNodes.length > 0 ? eqNodes[0] : gain;
+                            if (firstNode) {
+                                audioSourceNodeRef.current.connect(firstNode);
+                                console.log("Web audio source node connected.");
+                            } else {
+                                 console.error("Could not connect source node: No EQ or Gain node found.");
+                            }
+                        } catch (error) {
+                            console.error("Error creating/connecting MediaElementSourceNode:", error);
+                            handleStopPlayback(true); // Stop on error
+                            return; // Exit effect
+                        }
+                    }
+
+                    // Update audio element properties
+                    if (audioElement.src !== currentMedia.uri) {
+                        console.log("Setting audioElement src:", currentMedia.uri);
+                        audioElement.src = currentMedia.uri;
+                        audioElement.load(); // Important: Call load() after changing src
+                    }
+                    audioElement.playbackRate = rate;
+                    audioElement.loop = isLooping;
+                    // Volume is controlled by the GainNode
+
+                } else if (!currentMedia || currentMedia.type !== 'audio') {
+                    // No playable AUDIO media, ensure element is stopped and source disconnected
+                    // console.log("WebAudioManager Effect: No playable audio media, clearing source.");
+                    if (audioElement.src) {
+                        audioElement.pause();
+                        audioElement.removeAttribute('src');
+                        audioElement.load();
+                    }
+                    if (audioSourceNodeRef.current) {
+                        try { audioSourceNodeRef.current.disconnect(); } catch(e) {}
+                        audioSourceNodeRef.current = null;
+                    }
                 }
+            }, [currentMedia?.uri, currentMedia?.type, rate, isLooping]); // Dependencies: media URI/type, rate, loop
 
+             // Effect to add/remove event listeners for the audio element
+             useEffect(() => {
+                 if (Platform.OS !== 'web' || !webAudioElementRef.current) return;
 
-                // Update audio element properties
-                if (audioElement.src !== currentMedia.uri) {
-                    console.log("Setting audioElement src:", currentMedia.uri);
-                    audioElement.src = currentMedia.uri;
-                    audioElement.load(); // Important: Call load() after changing src
-                }
-                audioElement.playbackRate = rate;
-                audioElement.loop = isLooping;
-                // Volume is controlled by the GainNode, not the element directly
-                // audioElement.volume = volume; // Don't set element volume
+                 const audioElement = webAudioElementRef.current;
+                 console.log("Adding event listeners to web audio element.");
 
-            } else {
-                // No playable media, ensure element is stopped and source disconnected
-                console.log("WebAudioPlayer Effect: No playable media, clearing source.");
-                if (audioElement.src) {
-                    audioElement.pause();
-                    audioElement.removeAttribute('src');
-                    audioElement.load();
-                }
-                if (audioSourceNodeRef.current) {
-                    try { audioSourceNodeRef.current.disconnect(); } catch(e) {}
-                    audioSourceNodeRef.current = null;
-                }
-            }
-        }, [currentMedia?.uri, currentMedia?.type, rate, isLooping]); // Dependencies: media URI/type, rate, loop
-
-         // Effect to add/remove event listeners for the audio element
-         useEffect(() => {
-             if (Platform.OS !== 'web' || !webAudioElementRef.current) return;
-
-             const audioElement = webAudioElementRef.current;
-             console.log("Adding event listeners to web audio element.");
-
-             // Define event handlers using onPlaybackStatusUpdate
-             const handleMetadata = () => {
-                 console.log("WebAudio Event: loadedmetadata");
-                 const d = audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : currentMedia?.durationMillis || 0;
-                 onPlaybackStatusUpdate({ isLoaded: true, isPlaying: !audioElement.paused, isBuffering: false, durationMillis: d, positionMillis: audioElement.currentTime * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop });
-             };
-             const handleTimeUpdate = () => {
-                 // console.log("WebAudio Event: timeupdate"); // Can be very noisy
-                 onPlaybackStatusUpdate({ isLoaded: true, isPlaying: !audioElement.paused, isBuffering: false, durationMillis: audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : playbackStatus?.durationMillis || 0, positionMillis: audioElement.currentTime * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop });
-             };
-             const handleEnded = () => {
-                 console.log("WebAudio Event: ended");
-                 onPlaybackStatusUpdate({ isLoaded: true, isPlaying: false, isBuffering: false, durationMillis: audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : playbackStatus?.durationMillis || 0, positionMillis: audioElement.duration * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop, didJustFinish: true });
-             };
-             const handleError = (e) => {
-                 console.error("WebAudio Event: error", e, audioElement.error);
-                 let message = "Playback error occurred.";
-                 if(audioElement.error) {
-                     switch (audioElement.error.code) {
-                         case MediaError.MEDIA_ERR_ABORTED: message = 'Playback aborted.'; break;
-                         case MediaError.MEDIA_ERR_NETWORK: message = 'Network error during playback.'; break;
-                         case MediaError.MEDIA_ERR_DECODE: message = 'Error decoding media.'; break;
-                         case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED: message = 'Media format not supported.'; break;
-                         default: message = `Unknown playback error (Code: ${audioElement.error.code})`;
+                 // Define event handlers using onPlaybackStatusUpdate
+                 const handleMetadata = () => {
+                     console.log("WebAudio Event: loadedmetadata");
+                     // Only update if the current media is still the one associated with this element
+                     if (audioElement.src === currentMedia?.uri && currentMedia?.type === 'audio') {
+                         const d = audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : currentMedia?.durationMillis || 0;
+                         onPlaybackStatusUpdate({ isLoaded: true, isPlaying: !audioElement.paused, isBuffering: false, durationMillis: d, positionMillis: audioElement.currentTime * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop });
                      }
-                 }
-                 onPlaybackStatusUpdate({ isLoaded: false, error: message });
-             };
-             const handlePlay = () => {
-                 console.log("WebAudio Event: play");
-                 // Ensure context is running when play starts
-                 if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-                     audioContextRef.current.resume().catch(e => {});
-                 }
-                 onPlaybackStatusUpdate({ isLoaded: true, isPlaying: true, isBuffering: false, durationMillis: audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : playbackStatus?.durationMillis || 0, positionMillis: audioElement.currentTime * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop });
-             };
-             const handlePlaying = () => {
-                 console.log("WebAudio Event: playing");
-                 onPlaybackStatusUpdate({ isLoaded: true, isPlaying: true, isBuffering: false, durationMillis: audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : playbackStatus?.durationMillis || 0, positionMillis: audioElement.currentTime * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop });
-             };
-             const handlePause = () => {
-                 console.log("WebAudio Event: pause");
-                 onPlaybackStatusUpdate({ isLoaded: true, isPlaying: false, isBuffering: false, durationMillis: audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : playbackStatus?.durationMillis || 0, positionMillis: audioElement.currentTime * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop });
-             };
-             const handleWaiting = () => { // Buffering started
-                 console.log("WebAudio Event: waiting (Buffering)");
-                 onPlaybackStatusUpdate({ isLoaded: true, isPlaying: !audioElement.paused, isBuffering: true, durationMillis: audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : playbackStatus?.durationMillis || 0, positionMillis: audioElement.currentTime * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop });
-             };
-             const handleCanPlay = () => { // Enough data loaded to play (or resume after buffering)
-                 console.log("WebAudio Event: canplay");
-                 // If we were buffering, mark buffering as false
-                 if (playbackStatus?.isBuffering) {
-                     onPlaybackStatusUpdate({ isLoaded: true, isPlaying: !audioElement.paused, isBuffering: false, durationMillis: audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : playbackStatus?.durationMillis || 0, positionMillis: audioElement.currentTime * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop });
-                 }
-                 // Auto-play if needed (e.g., after initial load triggered by loadAndPlayMedia)
-                 // This might be handled by the loadAndPlayMedia function already.
-             };
+                 };
+                 const handleTimeUpdate = () => {
+                     // console.log("WebAudio Event: timeupdate"); // Can be very noisy
+                     if (audioElement.src === currentMedia?.uri && currentMedia?.type === 'audio') {
+                         onPlaybackStatusUpdate({ isLoaded: true, isPlaying: !audioElement.paused, isBuffering: false, durationMillis: audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : playbackStatus?.durationMillis || 0, positionMillis: audioElement.currentTime * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop });
+                     }
+                 };
+                 const handleEnded = () => {
+                     console.log("WebAudio Event: ended");
+                     if (audioElement.src === currentMedia?.uri && currentMedia?.type === 'audio') {
+                         onPlaybackStatusUpdate({ isLoaded: true, isPlaying: false, isBuffering: false, durationMillis: audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : playbackStatus?.durationMillis || 0, positionMillis: audioElement.duration * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop, didJustFinish: true });
+                     }
+                 };
+                 const handleError = (e) => {
+                     console.error("WebAudio Event: error", e, audioElement.error);
+                     if (audioElement.src === currentMedia?.uri && currentMedia?.type === 'audio') {
+                         let message = "Playback error occurred.";
+                         if(audioElement.error) {
+                             switch (audioElement.error.code) {
+                                 case MediaError.MEDIA_ERR_ABORTED: message = 'Playback aborted.'; break;
+                                 case MediaError.MEDIA_ERR_NETWORK: message = 'Network error during playback.'; break;
+                                 case MediaError.MEDIA_ERR_DECODE: message = 'Error decoding media.'; break;
+                                 case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED: message = 'Media format not supported.'; break;
+                                 default: message = `Unknown playback error (Code: ${audioElement.error.code})`;
+                             }
+                         }
+                         onPlaybackStatusUpdate({ isLoaded: false, error: message });
+                     }
+                 };
+                 const handlePlay = () => {
+                     console.log("WebAudio Event: play");
+                     if (audioElement.src === currentMedia?.uri && currentMedia?.type === 'audio') {
+                         // Ensure context is running when play starts
+                         if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+                             audioContextRef.current.resume().catch(e => {});
+                         }
+                         onPlaybackStatusUpdate({ isLoaded: true, isPlaying: true, isBuffering: false, durationMillis: audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : playbackStatus?.durationMillis || 0, positionMillis: audioElement.currentTime * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop });
+                     }
+                 };
+                 const handlePlaying = () => {
+                     console.log("WebAudio Event: playing");
+                     if (audioElement.src === currentMedia?.uri && currentMedia?.type === 'audio') {
+                         onPlaybackStatusUpdate({ isLoaded: true, isPlaying: true, isBuffering: false, durationMillis: audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : playbackStatus?.durationMillis || 0, positionMillis: audioElement.currentTime * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop });
+                     }
+                 };
+                 const handlePause = () => {
+                     console.log("WebAudio Event: pause");
+                     if (audioElement.src === currentMedia?.uri && currentMedia?.type === 'audio') {
+                         onPlaybackStatusUpdate({ isLoaded: true, isPlaying: false, isBuffering: false, durationMillis: audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : playbackStatus?.durationMillis || 0, positionMillis: audioElement.currentTime * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop });
+                     }
+                 };
+                 const handleWaiting = () => { // Buffering started
+                     console.log("WebAudio Event: waiting (Buffering)");
+                     if (audioElement.src === currentMedia?.uri && currentMedia?.type === 'audio') {
+                         onPlaybackStatusUpdate({ isLoaded: true, isPlaying: !audioElement.paused, isBuffering: true, durationMillis: audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : playbackStatus?.durationMillis || 0, positionMillis: audioElement.currentTime * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop });
+                     }
+                 };
+                 const handleCanPlay = () => { // Enough data loaded to play (or resume after buffering)
+                     console.log("WebAudio Event: canplay");
+                     if (audioElement.src === currentMedia?.uri && currentMedia?.type === 'audio') {
+                         // If we were buffering, mark buffering as false
+                         if (playbackStatus?.isBuffering) {
+                             onPlaybackStatusUpdate({ isLoaded: true, isPlaying: !audioElement.paused, isBuffering: false, durationMillis: audioElement.duration && Number.isFinite(audioElement.duration) ? audioElement.duration * 1000 : playbackStatus?.durationMillis || 0, positionMillis: audioElement.currentTime * 1000, rate: audioElement.playbackRate, volume: gainNodeRef.current?.gain.value ?? volume, isLooping: audioElement.loop });
+                         }
+                     }
+                 };
 
-             // Add listeners
-             audioElement.addEventListener('loadedmetadata', handleMetadata);
-             audioElement.addEventListener('timeupdate', handleTimeUpdate);
-             audioElement.addEventListener('ended', handleEnded);
-             audioElement.addEventListener('error', handleError);
-             audioElement.addEventListener('play', handlePlay);
-             audioElement.addEventListener('playing', handlePlaying);
-             audioElement.addEventListener('pause', handlePause);
-             audioElement.addEventListener('waiting', handleWaiting);
-             audioElement.addEventListener('canplay', handleCanPlay); // Fired when buffering ends or ready to play
+                 // Add listeners
+                 audioElement.addEventListener('loadedmetadata', handleMetadata);
+                 audioElement.addEventListener('timeupdate', handleTimeUpdate);
+                 audioElement.addEventListener('ended', handleEnded);
+                 audioElement.addEventListener('error', handleError);
+                 audioElement.addEventListener('play', handlePlay);
+                 audioElement.addEventListener('playing', handlePlaying);
+                 audioElement.addEventListener('pause', handlePause);
+                 audioElement.addEventListener('waiting', handleWaiting);
+                 audioElement.addEventListener('canplay', handleCanPlay); // Fired when buffering ends or ready to play
 
-             // Cleanup: Remove listeners on unmount or dependency change
-             return () => {
-                 console.log("Removing event listeners from web audio element.");
-                 audioElement.removeEventListener('loadedmetadata', handleMetadata);
-                 audioElement.removeEventListener('timeupdate', handleTimeUpdate);
-                 audioElement.removeEventListener('ended', handleEnded);
-                 audioElement.removeEventListener('error', handleError);
-                 audioElement.removeEventListener('play', handlePlay);
-                 audioElement.removeEventListener('playing', handlePlaying);
-                 audioElement.removeEventListener('pause', handlePause);
-                 audioElement.removeEventListener('waiting', handleWaiting);
-                 audioElement.removeEventListener('canplay', handleCanPlay);
-             };
+                 // Cleanup: Remove listeners on unmount or dependency change
+                 return () => {
+                     console.log("Removing event listeners from web audio element.");
+                     audioElement.removeEventListener('loadedmetadata', handleMetadata);
+                     audioElement.removeEventListener('timeupdate', handleTimeUpdate);
+                     audioElement.removeEventListener('ended', handleEnded);
+                     audioElement.removeEventListener('error', handleError);
+                     audioElement.removeEventListener('play', handlePlay);
+                     audioElement.removeEventListener('playing', handlePlaying);
+                     audioElement.removeEventListener('pause', handlePause);
+                     audioElement.removeEventListener('waiting', handleWaiting);
+                     audioElement.removeEventListener('canplay', handleCanPlay);
+                 };
              // Dependencies: Callback function, volume (for status updates), and potentially other state used in handlers
-         }, [onPlaybackStatusUpdate, volume, playbackStatus?.durationMillis, playbackStatus?.isBuffering]); // Added relevant dependencies
+             }, [onPlaybackStatusUpdate, volume, playbackStatus?.durationMillis, playbackStatus?.isBuffering, currentMedia?.uri, currentMedia?.type]); // Added relevant dependencies
 
-        // The component itself renders nothing visible
-        return null; // Or return the <audio> element directly if preferred, but managing via ref is cleaner
+            // The component itself renders nothing visible
+            return null;
+        };
 
-    }, [Platform.OS, onPlaybackStatusUpdate, volume, rate, isLooping, eqGains, currentMedia?.id, playbackStatus?.durationMillis, playbackStatus?.isBuffering, currentMedia?.uri, currentMedia?.type]); // Dependencies for the useMemo
+        // Return the manager component to be rendered
+        return <WebAudioManager />;
+
+    }, [Platform.OS, onPlaybackStatusUpdate, volume, rate, isLooping, eqGains, currentMedia?.id, playbackStatus?.durationMillis, playbackStatus?.isBuffering, currentMedia?.uri, currentMedia?.type, handleStopPlayback]); // Dependencies for the useMemo
 
 
     // --- Settings Screen - Clear Web DB Function ---
@@ -3856,7 +3964,7 @@ export default function App() {
                                 };
                                 deleteRequest.onerror = (event) => {
                                     console.error(`Error deleting database ${DB_NAME}:`, event.target.error);
-                                    reject(new Error(`Failed to delete database: ${event.target.error}`));
+                                    reject(new Error(`Failed to delete database: ${event.target.error?.message || 'Unknown error'}`));
                                 };
                                 deleteRequest.onblocked = (event) => {
                                     // This happens if the DB is still open in another tab/window
@@ -3879,15 +3987,15 @@ export default function App() {
                             Alert.alert(
                                 "Success",
                                 "Web library and playlists cleared successfully. Please reload the application for changes to take full effect.",
-                                [{ text: "Reload Now", onPress: () => window.location.reload() }, { text: "Later" }]
+                                [{ text: "Reload Now", onPress: () => { if (typeof window !== 'undefined') window.location.reload(); } }, { text: "Later" }]
                             );
 
                         } catch (err) {
                             console.error("Failed to clear IndexedDB:", err);
                             Alert.alert("Error", `Could not clear web library: ${err.message}`);
                             // Attempt to reopen the database connection after a failed deletion attempt
-                            dbInstancePromise = openDatabase();
-                            initDB(); // Try to re-initialize
+                            dbInstancePromise = openDatabase(); // Re-initiate the promise
+                            initDB(); // Try to re-initialize connection and state
                         } finally {
                             setIsDbLoading(false); // Hide loading indicator
                         }
@@ -4025,7 +4133,7 @@ export default function App() {
                 </Tab.Navigator>
             </NavigationContainer>
 
-            {/* Render the hidden Web Audio Player element (Web only) */}
+            {/* Render the hidden Web Audio Player manager (Web only) */}
             {Platform.OS === 'web' && WebAudioPlayer}
 
             {/* Mini Player Bar (Absolutely positioned above the tab bar) */}
@@ -4033,8 +4141,8 @@ export default function App() {
                 <MiniPlayerBar
                     currentMedia={currentMedia}
                     playbackStatus={playbackStatus}
-                    // Show loading specifically when changing audio/video tracks
-                    isLoading={isLoading && currentMedia != null && (currentMedia.type === 'audio' || currentMedia.type === 'video')}
+                    // Show loading specifically when changing audio/video tracks or buffering
+                    isLoading={isLoading || playbackStatus?.isBuffering}
                     onPlayPause={handlePlayPause}
                     // Expand only for playable types
                     onExpandPlayer={() => { if (currentMedia?.type === 'audio' || currentMedia?.type === 'video') setIsPlayerFullScreen(true); }}
@@ -4048,7 +4156,7 @@ export default function App() {
                 media={currentMedia}
                 playbackStatus={playbackStatus}
                 // Show loading indicator in full screen player as well
-                isLoading={isLoading && currentMedia != null}
+                isLoading={isLoading || playbackStatus?.isBuffering}
                 isFetchingLyrics={isFetchingLyrics}
                 lyrics={currentLyricsChords}
                 volume={volume} rate={rate} isLooping={isLooping} eqGains={eqGains}
@@ -4361,17 +4469,14 @@ const styles = StyleSheet.create({
         backgroundColor: 'black', // Black background behind video
         zIndex: 0 // Behind controls
     },
-    fullPlayerVideoWeb: { // Web video style
+    fullPlayerVideoWebPlaceholder: { // Placeholder for video on web
         position: 'absolute',
         top: 60, // Below header
         left: 0,
         right: 0,
         bottom: 250, // Above controls (adjust as needed)
-        width: '100%',
-        height: 'auto', // Adjust height automatically? Or fixed?
         backgroundColor: 'black',
         zIndex: 0,
-        objectFit: 'contain', // Like ResizeMode.CONTAIN
     },
     fullPlayerInfoContainer: { alignItems: 'center', paddingHorizontal: 20, marginBottom: 10, zIndex: 1 },
     fullPlayerTitle: { color: 'white', fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 5 },
